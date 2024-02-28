@@ -41,7 +41,7 @@ You need to create two helpers in Home Assistant to store the state of two entit
 
 The second device is Arduino based and is mounted next to your door to unlock it using a code or an RFID card.
 
-Download the enclosure .stl files from here.
+Download the enclosure .stl files from [here](https://www.thingiverse.com/thing:6508241).
 
 ### Connections
 
