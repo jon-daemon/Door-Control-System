@@ -5,9 +5,9 @@ It consists of two devices, one using an ESP8266 and another using an Arduino pr
 
 Read some extra info on my [website](https://hackermagnet.com/door-control-system-with-esphome-and-home-assistant/)
 
-![door unlocker esphome home assistant](https://github.com/jon-daemon/Door-Control-System/assets/206048/f815cf2f-4d65-42b1-8036-f59ea4d267dd)
-
 ## Schematic
+
+![door unlocker esphome home assistant](https://github.com/jon-daemon/Door-Control-System/assets/206048/f815cf2f-4d65-42b1-8036-f59ea4d267dd)
 
 ## ESP8266 device
 
