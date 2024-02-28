@@ -1,0 +1,296 @@
+substitutions:
+  devicename: door-control
+  friendlyname: Door Control
+
+esphome:
+  name: $devicename
+  comment: Control door and lights
+  includes:
+    - door-control/src/uart_read_line_sensor.h
+
+esp8266:
+  board: d1_mini
+  
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_wpa
+  fast_connect: on
+  ap:
+    ssid: $friendlyname Hotspot
+    password: "WifiPassHere"
+
+captive_portal:
+
+logger:
+  level: VERBOSE #makes uart stream available in esphome logstream
+  baud_rate: 0 #disable logging over uart
+
+uart:
+  id: uart_bus
+  tx_pin: GPIO1
+  rx_pin: GPIO3
+  baud_rate: 9600
+  
+api:
+
+ota:
+      
+globals:
+  - id: currentMillis
+    type: unsigned long
+    restore_value: no
+    initial_value: '0'
+  - id: relayMillis
+    type: unsigned long
+    restore_value: no
+    initial_value: '0'
+  - id: magnetMillis
+    type: unsigned long
+    restore_value: no
+    initial_value: '0'
+  - id: doorOpen
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: doorUnlockedKeycode
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: doorUnlockedApp
+    type: int
+    restore_value: no
+    initial_value: '0'
+    
+sensor:
+  - platform: uptime
+    name: $friendlyname Uptime
+    id: uptime_s
+    update_interval: 30s
+  - platform: wifi_signal
+    name: $friendlyname WiFi Signal
+    update_interval: 60s
+  - platform: homeassistant
+    entity_id: input_number.door_tries_left
+    id: errors_allowed
+    name: $friendlyname tries left
+    internal: false
+    accuracy_decimals: 0
+    icon: "mdi:lock-reset"
+  - platform: homeassistant
+    entity_id: input_number.door_unlock_type
+    id: unlock_type
+    name: $friendlyname unlock type
+    internal: false
+    accuracy_decimals: 0
+    icon: "mdi:lock-open-check"
+    # 1: key
+    # 2: manual switch
+    # 3: code 
+    # 4: app cellphone-key
+
+text_sensor:
+  - platform: template
+    name: $friendlyname Uptime (formatted)
+    lambda: |-
+      uint32_t dur = id(uptime_s).state;
+      int dys = 0;
+      int hrs = 0;
+      int mnts = 0;
+      if (dur > 86399) {
+        dys = trunc(dur / 86400);
+        dur = dur - (dys * 86400);
+      }
+      if (dur > 3599) {
+        hrs = trunc(dur / 3600);
+        dur = dur - (hrs * 3600);
+      }
+      if (dur > 59) {
+        mnts = trunc(dur / 60);
+        dur = dur - (mnts * 60);
+      }
+      char buffer[17];
+      sprintf(buffer, "%ud %02uh %02um %02us", dys, hrs, mnts, dur);
+      return {buffer};
+    icon: mdi:clock-start
+    update_interval: 30s
+  - platform: version
+    name: $friendlyname ESPHome Version
+    hide_timestamp: True
+  - platform: wifi_info
+    ip_address:
+      name: $friendlyname IP
+    ssid:
+      name: $friendlyname SSID
+    bssid:
+      name: $friendlyname BSSID
+    mac_address:
+      name: $friendlyname Mac Address
+  - platform: custom
+    lambda: |-
+      auto my_custom_sensor = new UartReadLineSensor(id(uart_bus));
+      App.register_component(my_custom_sensor);
+      return {my_custom_sensor};
+    text_sensors:
+      id: "uart_readline"
+
+binary_sensor:
+  - platform: status
+    name: "${friendlyname} Status"
+  # Door Magnetic Sensor
+  - platform: gpio
+    pin:
+      number: GPIO13
+      mode:
+        input: true
+        pullup: true
+    name: $friendlyname Door Status
+    id: doormagnet
+    device_class: door
+    filters:
+      - delayed_on: 10ms
+      - delayed_off: 2000ms
+    on_press:
+      - uart.write: "9999"
+  # Doorbell
+  - platform: gpio
+    pin:
+      number: GPIO4
+      mode:
+        input: true
+        pullup: true
+      inverted: True
+    filters:
+      - delayed_on: 100ms
+      - delayed_off: 10000ms
+    name: "$friendlyname Bell"
+  - platform: gpio
+    pin:
+      number: GPIO5
+      inverted: True
+    name: "$friendlyname Electromagnet"
+    id: electromagnet
+
+switch:
+  - platform: restart
+    name: $friendlyname restart
+  - platform: gpio
+    pin: GPIO12
+    name: $friendlyname Lamp
+    icon: "mdi:outdoor-lamp"
+    id: lamp
+    inverted: yes
+  - platform: gpio
+    pin: GPIO14
+    id: relay
+    name: $friendlyname Door Relay
+    inverted: yes
+  - platform: template
+    name: $friendlyname Door Remote
+    icon: "mdi:door"
+    lambda: |-
+      id(currentMillis) = millis();
+      if (id(uart_readline).state == "Op3nD00r"){
+        if (!id(doormagnet).state){
+          id(uart_readline).publish_state(" ");
+          id(relayMillis) = id(currentMillis);
+          id(relay).turn_on();
+          id(doorUnlockedKeycode) = 1;
+          return true;
+        }
+        else{
+          id(uart_readline).publish_state(" ");
+        }
+      }
+      else{
+        if (id(uart_readline).state == "lightsoff"){
+          id(lamp).turn_off();
+          id(uart_readline).publish_state(" ");
+        }
+        else if (id(uart_readline).state == "lightson"){
+          id(lamp).turn_on();
+          id(uart_readline).publish_state(" ");
+        }
+        else if (id(uart_readline).state != " "){
+          if (id(uart_readline).state == "0"){
+            id(errors_allowed).publish_state(0);
+          }
+          else if (id(uart_readline).state == "1"){
+            id(errors_allowed).publish_state(1);
+          }
+          else if (id(uart_readline).state == "2"){
+            id(errors_allowed).publish_state(2);
+          }
+          else if (id(uart_readline).state == "3"){
+            id(errors_allowed).publish_state(3);
+          }
+          else if (id(uart_readline).state == "4"){
+            id(errors_allowed).publish_state(4);
+          }
+          else if (id(uart_readline).state == "5"){
+            id(errors_allowed).publish_state(5);
+          }
+          else if (id(uart_readline).state == "6"){
+            id(errors_allowed).publish_state(6);
+          }
+          else if (id(uart_readline).state == "7"){
+            id(errors_allowed).publish_state(7);
+          }
+          else if (id(uart_readline).state == "8"){
+            id(errors_allowed).publish_state(8);
+          }
+          else if (id(uart_readline).state == "9"){
+            id(errors_allowed).publish_state(9);
+          }
+          id(uart_readline).publish_state(" ");
+        }
+      }
+
+      if (id(relay).state){
+        if (id(doormagnet).state){
+          id(doorOpen) = 1;
+         
+          if (id(doorUnlockedKeycode)) id(unlock_type).publish_state(3);
+          else if (id(doorUnlockedApp)) id(unlock_type).publish_state(4);
+
+          if ((unsigned long)(id(currentMillis) - id(magnetMillis)) >= 500) {
+            id(relay).turn_off();
+            id(doorUnlockedKeycode) = 0;
+            id(doorUnlockedApp) = 0;
+            return false;
+          }
+        }
+        else{
+          id(magnetMillis) = id(currentMillis);
+          if ((unsigned long)(id(currentMillis) - id(relayMillis)) >= 3000) {
+            id(relay).turn_off();
+            id(doorUnlockedKeycode) = 0;
+            id(doorUnlockedApp) = 0;
+            return false;
+          }
+        }
+      }
+
+      if (id(doormagnet).state){
+        if (!id(doorOpen)){
+          id(doorOpen) = 1;
+          
+          if(id(electromagnet).state) id(unlock_type).publish_state(2);
+          else id(unlock_type).publish_state(1);
+        }
+      }
+      else id(doorOpen) = 0;
+
+      return 0;
+    turn_on_action:
+      if:
+        condition:
+          binary_sensor.is_off: doormagnet
+        then:
+          - lambda: |-
+              id(relayMillis) = id(currentMillis);
+              id(doorUnlockedApp) = 1;
+          - switch.turn_on: relay
+          - delay: 3500ms
+          - switch.turn_off: relay
+    turn_off_action:
+      - switch.turn_off: relay
