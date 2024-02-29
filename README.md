@@ -30,7 +30,7 @@ The red module in the schematic is a logic level converter for the Tx/Rx signals
 
 ### ESPHome configuration notes
 
-You need to include the `uart_read_line_sensor.h` to read and send data on the Arduino using UART.
+You need to include the `uart_read_line_sensor.h` file to read and send data on the Arduino using UART.
 
 Change the "Op3nD00r" in the configuration with the message you want to receive from the Arduino and unlock the door.
 
@@ -54,7 +54,7 @@ Download the enclosure .stl files from [here](https://www.thingiverse.com/thing:
 
 There is a 4x4 keypad and a buzzer.
 
-The 16x2 LCD is connected using I^2.
+The 16x2 LCD is connected using I²C.
 
 The RC522 needs a 3.3V regulator if you power the Arduino from 5V.
 
