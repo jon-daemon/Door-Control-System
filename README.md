@@ -77,6 +77,6 @@ The RC522 needs a 3.3V regulator if you power the Arduino from 5V.
 | \*C20**xxxx**# | 1000 - 9999   | Text on screen duration in ms      |
 | \*C30**xxxx**# | 1000 - 9999   | Keypad active duration in ms       |
 | \*C40**xxxx**# | 1000 - 9999   | LCD idle duration in ms            |
-| \*DD0**x**#    | 1 or 0        | EEPROM delete / read               |
+| \*DD0**x**#    | 1 or 0        | EEPROM read / delete               |
 | \*DBA**x**#    | 1 - 5         | Select RFID card to save or delete |
 | \*DCD**x**#    | 1 or 0        | RFID unlocking ON / OFF            |

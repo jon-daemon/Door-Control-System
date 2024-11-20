@@ -6,7 +6,7 @@
 #include <MFRC522.h>
 
 #define PIN_L 4 // PIN Length
-#define PUK_L 8 // PUK Length, 1 more than actual length
+#define PUK_L 8 // PUK Length
 #define NUM_CARDS 5 // Number of RFID Cards to save
 
 #define OPT_L 4 // Options Lenght, 1 more than actual length
